@@ -155,7 +155,7 @@ input_loop();
 // A better approach is to use event handlers on the outer elements, and examine
 // the event.path to see what was actually clicked on.
 
-fullbox.addEventListener("mousedown", (event) => {
+fullbox.addEventListener("click", (event) => {
 	hub.fullbox_click(event);
 });
 

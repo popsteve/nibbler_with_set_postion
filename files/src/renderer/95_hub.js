@@ -2108,6 +2108,10 @@ let hub_props = {
 			this.setup_clear();
 			return;
 		}
+		if (EventPathString(event, "setup_reset")) {
+			this.setup_reset_default();
+			return;
+		}
 
 		let n;
 
@@ -2762,69 +2766,161 @@ let hub_props = {
 	},
 
 	show_setup_position: function() {
-		let lines = [];
-		lines.push(`<div class="infoline blue" style="font-weight: bold;">Setup Position</div>`);
 
-		// Piece pool
-		lines.push(`<div class="infoline">Piece Pool (Click to select/deselect, then click on board to place)</div>`);
-		lines.push(`<div style="display: flex; gap: 5px; margin-bottom: 10px;">`);
+		let container = document.createElement("div");
+		container.style.whiteSpace = "normal";
+
+		// Title
+		let title = document.createElement("div");
+		title.className = "infoline blue";
+		title.style.fontWeight = "bold";
+		title.textContent = "Setup Position";
+		container.appendChild(title);
+
+		// Piece pool label
+		let pool_label = document.createElement("div");
+		pool_label.className = "infoline";
+		pool_label.textContent = "Piece Pool (Click to select/deselect, then click on board to place)";
+		container.appendChild(pool_label);
+
+		// White piece pool row
+		let white_row = document.createElement("div");
+		white_row.style.display = "flex";
+		white_row.style.gap = "5px";
+		white_row.style.marginBottom = "10px";
 		for (let piece of "KQRBNP") {
-			let active = (this.setup_state.selected_piece === piece) ? "outline: 3px solid #6cccee;" : "border: 1px solid #444;";
-			lines.push(`<div id="pool_${piece}" class="pool_piece" draggable="true" style="width: ${config.square_size}px; height: ${config.square_size}px; background-image: ${images[piece].string_for_bg_style}; background-size: contain; ${active} cursor: pointer;"></div>`);
+			let div = document.createElement("div");
+			div.id = "pool_" + piece;
+			div.className = "pool_piece";
+			div.draggable = true;
+			div.style.width = config.square_size + "px";
+			div.style.height = config.square_size + "px";
+			div.style["background-image"] = images[piece].string_for_bg_style;
+			div.style["background-size"] = "contain";
+			div.style.cursor = "pointer";
+			if (this.setup_state.selected_piece === piece) {
+				div.style.outline = "3px solid #6cccee";
+			} else {
+				div.style.border = "1px solid #444";
+			}
+			white_row.appendChild(div);
 		}
-		lines.push(`</div>`);
-		lines.push(`<div style="display: flex; gap: 5px; margin-bottom: 10px;">`);
-		for (let piece of "kqrbnp") {
-			let active = (this.setup_state.selected_piece === piece) ? "outline: 3px solid #6cccee;" : "border: 1px solid #444;";
-			lines.push(`<div id="pool_${piece}" class="pool_piece" draggable="true" style="width: ${config.square_size}px; height: ${config.square_size}px; background-image: ${images[piece].string_for_bg_style}; background-size: contain; ${active} cursor: pointer;"></div>`);
-		}
-		let remove_active = (this.setup_state.selected_piece === "remove") ? "outline: 3px solid #ff6666;" : "border: 1px solid #444;";
-		lines.push(`<div id="pool_remove" class="pool_piece" style="width: ${config.square_size}px; height: ${config.square_size}px; background-color: #300; ${remove_active} cursor: pointer; display: flex; align-items: center; justify-content: center; color: #f66; font-weight: bold; font-size: 200%;">X</div>`);
-		lines.push(`</div>`);
+		container.appendChild(white_row);
 
-		// The setup board
-		lines.push(`<table id="setup_board" style="border-collapse: collapse; margin-bottom: 1em; pointer-events: auto;">`);
+		// Black piece pool row + remove button
+		let black_row = document.createElement("div");
+		black_row.style.display = "flex";
+		black_row.style.gap = "5px";
+		black_row.style.marginBottom = "10px";
+		for (let piece of "kqrbnp") {
+			let div = document.createElement("div");
+			div.id = "pool_" + piece;
+			div.className = "pool_piece";
+			div.draggable = true;
+			div.style.width = config.square_size + "px";
+			div.style.height = config.square_size + "px";
+			div.style["background-image"] = images[piece].string_for_bg_style;
+			div.style["background-size"] = "contain";
+			div.style.cursor = "pointer";
+			if (this.setup_state.selected_piece === piece) {
+				div.style.outline = "3px solid #6cccee";
+			} else {
+				div.style.border = "1px solid #444";
+			}
+			black_row.appendChild(div);
+		}
+		let remove_div = document.createElement("div");
+		remove_div.id = "pool_remove";
+		remove_div.className = "pool_piece";
+		remove_div.style.width = config.square_size + "px";
+		remove_div.style.height = config.square_size + "px";
+		remove_div.style.backgroundColor = "#300";
+		remove_div.style.cursor = "pointer";
+		remove_div.style.display = "flex";
+		remove_div.style.alignItems = "center";
+		remove_div.style.justifyContent = "center";
+		remove_div.style.color = "#f66";
+		remove_div.style.fontWeight = "bold";
+		remove_div.style.fontSize = "200%";
+		remove_div.textContent = "X";
+		if (this.setup_state.selected_piece === "remove") {
+			remove_div.style.outline = "3px solid #ff6666";
+		} else {
+			remove_div.style.border = "1px solid #444";
+		}
+		black_row.appendChild(remove_div);
+		container.appendChild(black_row);
+
+		// The setup board table
+		let table = document.createElement("table");
+		table.id = "setup_board";
+		table.style.borderCollapse = "collapse";
+		table.style.tableLayout = "fixed";
+		table.style.marginBottom = "1em";
+		table.style.pointerEvents = "auto";
 		for (let y = 0; y < 8; y++) {
-			lines.push(`<tr>`);
+			let tr = document.createElement("tr");
 			for (let x = 0; x < 8; x++) {
 				let piece = this.setup_state.board[x][y];
-				let bg = ((x + y) % 2 === 0) ? config.light_square : config.dark_square;
-				let img = piece ? `background-image: ${images[piece].string_for_bg_style};` : "";
-				lines.push(`<td id="setup_square_${x}_${y}" draggable="${piece ? "true" : "false"}" style="width: ${config.square_size}px; height: ${config.square_size}px; background-color: ${bg}; ${img} background-size: contain; cursor: pointer; border: 0; padding: 0;"></td>`);
+				let td = document.createElement("td");
+				td.id = "setup_square_" + x + "_" + y;
+				td.width = config.square_size;
+				td.height = config.square_size;
+				td.style.backgroundColor = ((x + y) % 2 === 0) ? config.light_square : config.dark_square;
+				td.style["background-size"] = "contain";
+				td.style.cursor = "pointer";
+				if (piece) {
+					td.style["background-image"] = images[piece].string_for_bg_style;
+					td.draggable = true;
+				}
+				tr.appendChild(td);
 			}
-			lines.push(`</tr>`);
+			table.appendChild(tr);
 		}
-		lines.push(`</table>`);
+		container.appendChild(table);
 
-		// Controls
-		lines.push(`<div class="infoline">`);
-		lines.push(`Side to move: <select id="setup_active" style="background: #222; color: #eee; border: 1px solid #444; padding: 3px;">`);
-		lines.push(`<option value="w" ${this.setup_state.active === "w" ? "selected" : ""}>White</option>`);
-		lines.push(`<option value="b" ${this.setup_state.active === "b" ? "selected" : ""}>Black</option>`);
-		lines.push(`</select>`);
-		lines.push(` &nbsp; Halfmoves: <input type="number" id="setup_halfmove" value="${this.setup_state.halfmove}" min="0" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">`);
-		lines.push(` &nbsp; Fullmoves: <input type="number" id="setup_fullmove" value="${this.setup_state.fullmove}" min="1" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">`);
-		lines.push(` &nbsp; En passant square: <input type="text" id="setup_enpassant" value="${this.setup_state.enpassant ? this.setup_state.enpassant.s : "-"}" style="width: 40px; background: #222; color: #eee; border: 1px solid #444;">`);
-		lines.push(`</div>`);
+		// Controls - use innerHTML for text-based elements (these work fine via innerHTML)
+		let controls1 = document.createElement("div");
+		controls1.className = "infoline";
+		controls1.innerHTML =
+			`Side to move: <select id="setup_active" style="background: #222; color: #eee; border: 1px solid #444; padding: 3px;">` +
+			`<option value="w" ${this.setup_state.active === "w" ? "selected" : ""}>White</option>` +
+			`<option value="b" ${this.setup_state.active === "b" ? "selected" : ""}>Black</option>` +
+			`</select>` +
+			` &nbsp; Halfmoves: <input type="number" id="setup_halfmove" value="${this.setup_state.halfmove}" min="0" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">` +
+			` &nbsp; Fullmoves: <input type="number" id="setup_fullmove" value="${this.setup_state.fullmove}" min="1" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">` +
+			` &nbsp; En passant square: <input type="text" id="setup_enpassant" value="${this.setup_state.enpassant ? this.setup_state.enpassant.s : "-"}" style="width: 40px; background: #222; color: #eee; border: 1px solid #444;">`;
+		container.appendChild(controls1);
 
-		lines.push(`<div class="infoline">`);
-		lines.push(`Castling Rights: &nbsp; `);
+		let controls2 = document.createElement("div");
+		controls2.className = "infoline";
 		let rights = this.setup_state.castling;
-		lines.push(`White: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_K" ${rights.includes("K") || rights.includes("H") ? "checked" : ""}> OO</label> &nbsp;`);
-		lines.push(`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_Q" ${rights.includes("Q") || rights.includes("A") ? "checked" : ""}> OOO</label> &nbsp; &nbsp; `);
-		lines.push(`Black: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_k" ${rights.includes("k") || rights.includes("h") ? "checked" : ""}> oo</label> &nbsp;`);
-		lines.push(`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_q" ${rights.includes("q") || rights.includes("a") ? "checked" : ""}> ooo</label>`);
-		lines.push(`</div>`);
+		controls2.innerHTML =
+			`Castling Rights: &nbsp; ` +
+			`White: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_K" ${rights.includes("K") || rights.includes("H") ? "checked" : ""}> OO</label> &nbsp;` +
+			`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_Q" ${rights.includes("Q") || rights.includes("A") ? "checked" : ""}> OOO</label> &nbsp; &nbsp; ` +
+			`Black: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_k" ${rights.includes("k") || rights.includes("h") ? "checked" : ""}> oo</label> &nbsp;` +
+			`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_q" ${rights.includes("q") || rights.includes("a") ? "checked" : ""}> ooo</label>`;
+		container.appendChild(controls2);
 
-		lines.push(`<div class="infoline" style="margin-top: 20px;">`);
-		lines.push(`<button id="setup_apply" style="padding: 5px 15px; cursor: pointer;">Apply</button> &nbsp; `);
-		lines.push(`<button id="setup_clear" style="padding: 5px 15px; cursor: pointer;">Clear Board</button> &nbsp; `);
-		lines.push(`<button id="setup_cancel" style="padding: 5px 15px; cursor: pointer;">Cancel</button>`);
-		lines.push(`</div>`);
+		// Buttons - note the _btn suffix so EventPathString returns a truthy string
+		let buttons_div = document.createElement("div");
+		buttons_div.className = "infoline";
+		buttons_div.style.marginTop = "20px";
+		buttons_div.innerHTML =
+			`<button id="setup_apply_btn" style="padding: 5px 15px; cursor: pointer;">Apply</button> &nbsp; ` +
+			`<button id="setup_clear_btn" style="padding: 5px 15px; cursor: pointer;">Clear Board</button> &nbsp; ` +
+			`<button id="setup_reset_btn" style="padding: 5px 15px; cursor: pointer;">Reset Default</button> &nbsp; ` +
+			`<button id="setup_cancel_btn" style="padding: 5px 15px; cursor: pointer;">Cancel</button>`;
+		container.appendChild(buttons_div);
 
-		fullbox_content.innerHTML = lines.join("");
+		fullbox_content.innerHTML = "";
+		fullbox_content.appendChild(container);
 		this.show_fullbox();
 	},
+
+
+
 
 	sync_setup_state: function() {
 		if (document.getElementById("setup_active")) {
@@ -2879,7 +2975,6 @@ let hub_props = {
 		} else {
 			if (current_piece) {
 				this.setup_state.selected_piece = current_piece;
-				this.setup_state.board[x][y] = "";
 			}
 		}
 		this.show_setup_position();
@@ -2889,6 +2984,23 @@ let hub_props = {
 		this.sync_setup_state();
 		this.setup_state.board = New2DArray(8, 8, "");
 		this.show_setup_position();
+	},
+
+	setup_reset_default: function() {
+		if (confirm("Reset to default chess layout?")) {
+			let default_pos = LoadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+			for (let x = 0; x < 8; x++) {
+				for (let y = 0; y < 8; y++) {
+					this.setup_state.board[x][y] = default_pos.state[x][y];
+				}
+			}
+			this.setup_state.active = default_pos.active;
+			this.setup_state.castling = default_pos.castling;
+			this.setup_state.enpassant = default_pos.enpassant;
+			this.setup_state.halfmove = default_pos.halfmove;
+			this.setup_state.fullmove = default_pos.fullmove;
+			this.show_setup_position();
+		}
 	},
 
 	setup_apply: function() {

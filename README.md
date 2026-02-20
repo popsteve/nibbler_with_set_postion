@@ -10,29 +10,30 @@ For prebuilt binary releases, see the [Releases](https://github.com/rooklift/nib
 
 ## Features
 
-* Display Leela's top choices graphically.
-* Winrate graph.
-* Optionally shows Leela statistics like N, P, Q, S, U, V, and WDL for each move.
-* UCI `searchmoves` functionality.
-* Automatic full-game analysis.
-* Play against Leela from any position.
-* Leela self-play from any position.
-* PGN loading via menu, clipboard, or drag-and-drop.
-* Supports PGN variations of arbitrary depth.
-* FEN loading.
-* Chess 960.
+- Display Leela's top choices graphically.
+- Winrate graph.
+- Optionally shows Leela statistics like N, P, Q, S, U, V, and WDL for each move.
+- UCI `searchmoves` functionality.
+- Automatic full-game analysis.
+- Play against Leela from any position.
+- Leela self-play from any position.
+- PGN loading via menu, clipboard, or drag-and-drop.
+- Supports PGN variations of arbitrary depth.
+- FEN loading.
+- Chess 960.
+- Setup custom positions with an interactive board.
 
 ## Installation - Windows / Linux
 
 Some Windows and Linux standalone releases are uploaded to the [Releases](https://github.com/rooklift/nibbler/releases) section from time to time.
 
-*Alternatively*, it is possible to run Nibbler from source. This requires Electron, but has no other dependencies. If you have Electron installed (e.g. `npm install -g electron`) you can likely enter the `/src` directory, then do `electron .` to run it. Nibbler should be compatible with at least version 5 and above.
+_Alternatively_, it is possible to run Nibbler from source. This requires Electron, but has no other dependencies. If you have Electron installed (e.g. `npm install -g electron`) you can likely enter the `/src` directory, then do `electron .` to run it. Nibbler should be compatible with at least version 5 and above.
 
 You could also build a standalone app. See comments inside the Python script `builder.py` for info.
 
 ## Linux install script
 
-Linux users can make use of the following *one-liner* to install the latest version of Nibbler:
+Linux users can make use of the following _one-liner_ to install the latest version of Nibbler:
 
 ```bash
 curl -L https://raw.githubusercontent.com/rooklift/nibbler/master/files/scripts/install.sh | bash
@@ -46,8 +47,8 @@ Mac builds have been made by [twoplan](https://github.com/twoplan/Nibbler-for-ma
 
 Most people won't need them, but all of Leela's engine options can be set in two ways:
 
-* Leela automatically loads options from a file called `lc0.config` at startup - see [here](https://lczero.org/play/configuration/flags/#config-file).
-* Nibbler will send UCI options specified in Nibbler's own `engines.json` file (which you can find via the Dev menu).
+- Leela automatically loads options from a file called `lc0.config` at startup - see [here](https://lczero.org/play/configuration/flags/#config-file).
+- Nibbler will send UCI options specified in Nibbler's own `engines.json` file (which you can find via the Dev menu).
 
 ## Hints and tips
 
