@@ -232,6 +232,15 @@ ul {
 	background-color: #202020;
 }
 
+.pool_piece:hover {
+	background-color: #222;
+}
+
+#setup_board td:hover {
+	outline: 2px solid #6cccee;
+	outline-offset: -2px;
+}
+
 .ocm_highlight {
 	background-color: #770000;
 }

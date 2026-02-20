@@ -2084,6 +2084,31 @@ let hub_props = {
 
 	fullbox_click: function(event) {
 
+		// Setup Position...
+
+		let s = EventPathString(event, "setup_square_");
+		if (s) {
+			this.setup_square_click(s);
+			return;
+		}
+		s = EventPathString(event, "pool_");
+		if (s) {
+			this.setup_pool_click(s);
+			return;
+		}
+		if (EventPathString(event, "setup_apply")) {
+			this.setup_apply();
+			return;
+		}
+		if (EventPathString(event, "setup_cancel")) {
+			this.hide_fullbox();
+			return;
+		}
+		if (EventPathString(event, "setup_clear")) {
+			this.setup_clear();
+			return;
+		}
+
 		let n;
 
 		// PGN chooser...
@@ -2154,6 +2179,34 @@ let hub_props = {
 		// Is it a piece?
 
 		let text_data = event.dataTransfer.getData("text");
+
+		if (text_data.startsWith("setup_square_")) {
+			this.sync_setup_state();
+			let source = text_data.slice("setup_square_".length);
+			let dest = EventPathString(event, "setup_square_");
+			if (source && dest) {
+				let [sx, sy] = source.split("_").map(z => parseInt(z, 10));
+				let [dx, dy] = dest.split("_").map(z => parseInt(z, 10));
+				let piece = this.setup_state.board[sx][sy];
+				this.setup_state.board[sx][sy] = "";
+				this.setup_state.board[dx][dy] = piece;
+				this.show_setup_position();
+			}
+			return;
+		}
+
+		if (text_data.startsWith("pool_")) {
+			this.sync_setup_state();
+			let piece = text_data.slice("pool_".length);
+			let dest = EventPathString(event, "setup_square_");
+			if (piece && dest && piece !== "remove") {
+				let [dx, dy] = dest.split("_").map(z => parseInt(z, 10));
+				this.setup_state.board[dx][dy] = piece;
+				this.show_setup_position();
+			}
+			return;
+		}
+
 		if (text_data.startsWith("overlay_")) {
 
 			let source = Point(text_data.slice(8, 10));		// Possibly null
@@ -2677,6 +2730,203 @@ let hub_props = {
 
 		fullbox_content.innerHTML = divs.join("");
 		this.show_fullbox();
+	},
+
+	// ---------------------------------------------------------------------------------------------------------------------
+
+	setup_position: function() {
+		this.set_behaviour("halt");
+		this.setup_state = {
+			board: New2DArray(8, 8, ""),
+			active: "w",
+			castling: "KQkq",
+			enpassant: null,
+			halfmove: 0,
+			fullmove: 1,
+			selected_piece: null
+		};
+
+		let current_board = this.tree.node.board;
+		for (let x = 0; x < 8; x++) {
+			for (let y = 0; y < 8; y++) {
+				this.setup_state.board[x][y] = current_board.state[x][y];
+			}
+		}
+		this.setup_state.active = current_board.active;
+		this.setup_state.castling = current_board.castling;
+		this.setup_state.enpassant = current_board.enpassant;
+		this.setup_state.halfmove = current_board.halfmove;
+		this.setup_state.fullmove = current_board.fullmove;
+
+		this.show_setup_position();
+	},
+
+	show_setup_position: function() {
+		let lines = [];
+		lines.push(`<div class="infoline blue" style="font-weight: bold;">Setup Position</div>`);
+
+		// Piece pool
+		lines.push(`<div class="infoline">Piece Pool (Click to select/deselect, then click on board to place)</div>`);
+		lines.push(`<div style="display: flex; gap: 5px; margin-bottom: 10px;">`);
+		for (let piece of "KQRBNP") {
+			let active = (this.setup_state.selected_piece === piece) ? "outline: 3px solid #6cccee;" : "border: 1px solid #444;";
+			lines.push(`<div id="pool_${piece}" class="pool_piece" draggable="true" style="width: ${config.square_size}px; height: ${config.square_size}px; background-image: ${images[piece].string_for_bg_style}; background-size: contain; ${active} cursor: pointer;"></div>`);
+		}
+		lines.push(`</div>`);
+		lines.push(`<div style="display: flex; gap: 5px; margin-bottom: 10px;">`);
+		for (let piece of "kqrbnp") {
+			let active = (this.setup_state.selected_piece === piece) ? "outline: 3px solid #6cccee;" : "border: 1px solid #444;";
+			lines.push(`<div id="pool_${piece}" class="pool_piece" draggable="true" style="width: ${config.square_size}px; height: ${config.square_size}px; background-image: ${images[piece].string_for_bg_style}; background-size: contain; ${active} cursor: pointer;"></div>`);
+		}
+		let remove_active = (this.setup_state.selected_piece === "remove") ? "outline: 3px solid #ff6666;" : "border: 1px solid #444;";
+		lines.push(`<div id="pool_remove" class="pool_piece" style="width: ${config.square_size}px; height: ${config.square_size}px; background-color: #300; ${remove_active} cursor: pointer; display: flex; align-items: center; justify-content: center; color: #f66; font-weight: bold; font-size: 200%;">X</div>`);
+		lines.push(`</div>`);
+
+		// The setup board
+		lines.push(`<table id="setup_board" style="border-collapse: collapse; margin-bottom: 1em; pointer-events: auto;">`);
+		for (let y = 0; y < 8; y++) {
+			lines.push(`<tr>`);
+			for (let x = 0; x < 8; x++) {
+				let piece = this.setup_state.board[x][y];
+				let bg = ((x + y) % 2 === 0) ? config.light_square : config.dark_square;
+				let img = piece ? `background-image: ${images[piece].string_for_bg_style};` : "";
+				lines.push(`<td id="setup_square_${x}_${y}" draggable="${piece ? "true" : "false"}" style="width: ${config.square_size}px; height: ${config.square_size}px; background-color: ${bg}; ${img} background-size: contain; cursor: pointer; border: 0; padding: 0;"></td>`);
+			}
+			lines.push(`</tr>`);
+		}
+		lines.push(`</table>`);
+
+		// Controls
+		lines.push(`<div class="infoline">`);
+		lines.push(`Side to move: <select id="setup_active" style="background: #222; color: #eee; border: 1px solid #444; padding: 3px;">`);
+		lines.push(`<option value="w" ${this.setup_state.active === "w" ? "selected" : ""}>White</option>`);
+		lines.push(`<option value="b" ${this.setup_state.active === "b" ? "selected" : ""}>Black</option>`);
+		lines.push(`</select>`);
+		lines.push(` &nbsp; Halfmoves: <input type="number" id="setup_halfmove" value="${this.setup_state.halfmove}" min="0" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">`);
+		lines.push(` &nbsp; Fullmoves: <input type="number" id="setup_fullmove" value="${this.setup_state.fullmove}" min="1" style="width: 50px; background: #222; color: #eee; border: 1px solid #444;">`);
+		lines.push(` &nbsp; En passant square: <input type="text" id="setup_enpassant" value="${this.setup_state.enpassant ? this.setup_state.enpassant.s : "-"}" style="width: 40px; background: #222; color: #eee; border: 1px solid #444;">`);
+		lines.push(`</div>`);
+
+		lines.push(`<div class="infoline">`);
+		lines.push(`Castling Rights: &nbsp; `);
+		let rights = this.setup_state.castling;
+		lines.push(`White: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_K" ${rights.includes("K") || rights.includes("H") ? "checked" : ""}> OO</label> &nbsp;`);
+		lines.push(`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_Q" ${rights.includes("Q") || rights.includes("A") ? "checked" : ""}> OOO</label> &nbsp; &nbsp; `);
+		lines.push(`Black: <label style="cursor: pointer;"><input type="checkbox" id="setup_right_k" ${rights.includes("k") || rights.includes("h") ? "checked" : ""}> oo</label> &nbsp;`);
+		lines.push(`<label style="cursor: pointer;"><input type="checkbox" id="setup_right_q" ${rights.includes("q") || rights.includes("a") ? "checked" : ""}> ooo</label>`);
+		lines.push(`</div>`);
+
+		lines.push(`<div class="infoline" style="margin-top: 20px;">`);
+		lines.push(`<button id="setup_apply" style="padding: 5px 15px; cursor: pointer;">Apply</button> &nbsp; `);
+		lines.push(`<button id="setup_clear" style="padding: 5px 15px; cursor: pointer;">Clear Board</button> &nbsp; `);
+		lines.push(`<button id="setup_cancel" style="padding: 5px 15px; cursor: pointer;">Cancel</button>`);
+		lines.push(`</div>`);
+
+		fullbox_content.innerHTML = lines.join("");
+		this.show_fullbox();
+	},
+
+	sync_setup_state: function() {
+		if (document.getElementById("setup_active")) {
+			this.setup_state.active = document.getElementById("setup_active").value;
+		}
+		if (document.getElementById("setup_halfmove")) {
+			this.setup_state.halfmove = parseInt(document.getElementById("setup_halfmove").value, 10) || 0;
+		}
+		if (document.getElementById("setup_fullmove")) {
+			this.setup_state.fullmove = parseInt(document.getElementById("setup_fullmove").value, 10) || 1;
+		}
+		if (document.getElementById("setup_enpassant")) {
+			let ep = document.getElementById("setup_enpassant").value.trim().toLowerCase();
+			if (ep === "" || ep === "-") {
+				this.setup_state.enpassant = null;
+			} else {
+				this.setup_state.enpassant = Point(ep);
+			}
+		}
+
+		let castling = "";
+		if (document.getElementById("setup_right_K")?.checked) castling += "K";
+		if (document.getElementById("setup_right_Q")?.checked) castling += "Q";
+		if (document.getElementById("setup_right_k")?.checked) castling += "k";
+		if (document.getElementById("setup_right_q")?.checked) castling += "q";
+		if (castling !== "") {
+			this.setup_state.castling = castling;
+		} else if (document.getElementById("setup_right_K")) {
+			this.setup_state.castling = "-";
+		}
+	},
+
+	setup_pool_click: function(s) {
+		this.sync_setup_state();
+		if (this.setup_state.selected_piece === s) {
+			this.setup_state.selected_piece = null;
+		} else {
+			this.setup_state.selected_piece = s;
+		}
+		this.show_setup_position();
+	},
+
+	setup_square_click: function(s) {
+		this.sync_setup_state();
+		let [x, y] = s.split("_").map(z => parseInt(z, 10));
+		let current_piece = this.setup_state.board[x][y];
+
+		if (this.setup_state.selected_piece === "remove") {
+			this.setup_state.board[x][y] = "";
+		} else if (this.setup_state.selected_piece) {
+			this.setup_state.board[x][y] = this.setup_state.selected_piece;
+		} else {
+			if (current_piece) {
+				this.setup_state.selected_piece = current_piece;
+				this.setup_state.board[x][y] = "";
+			}
+		}
+		this.show_setup_position();
+	},
+
+	setup_clear: function() {
+		this.sync_setup_state();
+		this.setup_state.board = New2DArray(8, 8, "");
+		this.show_setup_position();
+	},
+
+	setup_apply: function() {
+		this.sync_setup_state();
+		let active = this.setup_state.active;
+		let castling = this.setup_state.castling;
+		let halfmove = this.setup_state.halfmove;
+		let fullmove = this.setup_state.fullmove;
+		let enpassant = this.setup_state.enpassant ? this.setup_state.enpassant.s : "-";
+
+		let rows = [];
+		for (let y = 0; y < 8; y++) {
+			let row = "";
+			let empty = 0;
+			for (let x = 0; x < 8; x++) {
+				let piece = this.setup_state.board[x][y];
+				if (piece === "") {
+					empty++;
+				} else {
+					if (empty > 0) {
+						row += empty;
+						empty = 0;
+					}
+					row += piece;
+				}
+			}
+			if (empty > 0) row += empty;
+			rows.push(row);
+		}
+		let fenPieces = rows.join("/");
+
+		let fen = `${fenPieces} ${active} ${castling} ${enpassant} ${halfmove} ${fullmove}`;
+		try {
+			this.load_fen(fen);
+			this.hide_fullbox();
+		} catch (err) {
+			alert(err);
+		}
 	},
 
 	// ---------------------------------------------------------------------------------------------------------------------
