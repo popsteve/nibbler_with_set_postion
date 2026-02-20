@@ -159,6 +159,12 @@ fullbox.addEventListener("mousedown", (event) => {
 	hub.fullbox_click(event);
 });
 
+fullbox.addEventListener("dragstart", (event) => {
+	if (event.target.id && (event.target.id.startsWith("setup_square_") || event.target.id.startsWith("pool_"))) {
+		event.dataTransfer.setData("text", event.target.id);
+	}
+});
+
 boardfriends.addEventListener("mousedown", (event) => {
 	hub.boardfriends_click(event);
 });

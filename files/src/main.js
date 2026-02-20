@@ -365,6 +365,12 @@ function menu_build() {
 					}
 				},
 				{
+					label: translate.t("Setup position..."),
+					click: () => {
+						win.webContents.send("call", "setup_position");
+					}
+				},
+				{
 					type: "separator"
 				},
 				{
